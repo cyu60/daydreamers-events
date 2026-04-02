@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Event, Instructor } from "./types";
+import type { Event, Instructor, EventRegistration } from "./types";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -59,9 +59,10 @@ export async function getEventBySlug(
   return mapToEvent(event);
 }
 
-function mapToEvent(event: any): Event {
+function mapToEvent(event: any, registrationCount?: number): Event {
   const totalCapacity = event.participant_capacity ?? 0;
-  const currentAttendees = event.current_attendees ?? 0;
+  // Prefer live registration count when available, fall back to stored value
+  const currentAttendees = registrationCount ?? event.current_attendees ?? 0;
 
   return {
     id: event.event_id,
@@ -86,6 +87,38 @@ function mapToEvent(event: any): Event {
   };
 }
 
+/** Get a single event by slug with live registration count from event_registrations table */
+export async function getEventBySlugWithRegistrations(
+  slug: string
+): Promise<Event | null> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    const mocks = getMockEvents();
+    return mocks.find((e) => e.slug === slug) ?? null;
+  }
+
+  let { data: event } = await supabase
+    .from("events")
+    .select("*")
+    .eq("slug", slug)
+    .ilike("event_type", "daydreamers-event")
+    .maybeSingle();
+
+  if (!event) {
+    ({ data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("event_id", slug)
+      .ilike("event_type", "daydreamers-event")
+      .maybeSingle());
+  }
+
+  if (!event) return null;
+
+  const regCount = await getRegistrationCount(event.event_id);
+  return mapToEvent(event, regCount);
+}
+
 // ─── Instructors (mock for now — no people table in Supabase yet) ─────
 
 export async function getInstructors(): Promise<Instructor[]> {
@@ -104,6 +137,83 @@ export async function getInstructorsByIds(
 ): Promise<Instructor[]> {
   const all = await getInstructors();
   return all.filter((i) => ids.includes(i.id));
+}
+
+// ─── Registrations ───────────────────────────────────────────────
+
+export async function getRegistrationCount(eventId: string): Promise<number> {
+  const supabase = getSupabase();
+  if (!supabase) return 0;
+
+  const { count, error } = await supabase
+    .from("event_registrations")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  if (error) {
+    console.error("Failed to fetch registration count:", error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+export async function registerForEvent(
+  eventId: string,
+  name: string,
+  email: string
+): Promise<{ success: boolean; message: string }> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { success: false, message: "Registration service unavailable." };
+  }
+
+  // Check if already registered
+  const { data: existing } = await supabase
+    .from("event_registrations")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+
+  if (existing) {
+    return { success: true, message: "You're already registered for this event!" };
+  }
+
+  // Check capacity
+  const { count: regCount } = await supabase
+    .from("event_registrations")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("participant_capacity")
+    .eq("event_id", eventId)
+    .maybeSingle();
+
+  const capacity = event?.participant_capacity ?? 0;
+  if (capacity > 0 && (regCount ?? 0) >= capacity) {
+    return { success: false, message: "Sorry, this event is full." };
+  }
+
+  // Insert registration
+  const { error } = await supabase.from("event_registrations").insert({
+    event_id: eventId,
+    name: name.trim(),
+    email: email.toLowerCase().trim(),
+  });
+
+  if (error) {
+    // Handle unique constraint violation
+    if (error.code === "23505") {
+      return { success: true, message: "You're already registered for this event!" };
+    }
+    console.error("Failed to register:", error);
+    return { success: false, message: "Registration failed. Please try again." };
+  }
+
+  return { success: true, message: "You're registered! We'll see you there." };
 }
 
 // ─── Mock data (fallback when Supabase has no events) ────────────

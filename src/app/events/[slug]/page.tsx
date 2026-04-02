@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   getEvents,
-  getEventBySlug,
+  getEventBySlugWithRegistrations,
   getInstructorsByIds,
 } from "@/lib/notion";
 import { InstructorCard } from "@/components/instructor-card";
 import { EventCard } from "@/components/event-card";
+import { RegistrationForm, RegistrationButton } from "@/components/registration-form";
 
-export const revalidate = 60;
+export const revalidate = 30;
 
 export async function generateStaticParams() {
   const events = await getEvents();
@@ -33,7 +34,7 @@ export default async function EventPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const event = await getEventBySlug(slug);
+  const event = await getEventBySlugWithRegistrations(slug);
   if (!event) notFound();
 
   const instructors = await getInstructorsByIds(event.instructorIds);
@@ -219,18 +220,11 @@ export default async function EventPage({
               )}
             </div>
 
-            {isFull ? (
-              <div className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-ink/10 text-dust cursor-not-allowed">
-                Event Full
-              </div>
-            ) : (
-              <a
-                href="mailto:team@daydreamers-academy.com?subject=RSVP: Event Registration"
-                className="block w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
-              >
-                Register
-              </a>
-            )}
+            <RegistrationForm
+              eventId={event.id}
+              spotsRemaining={event.spotsRemaining}
+              capacity={event.capacity}
+            />
           </div>
         </aside>
       </div>
@@ -267,18 +261,11 @@ export default async function EventPage({
           <p className="text-xs text-dust truncate">open to all</p>
         </div>
         <div className="flex-shrink-0">
-          {isFull ? (
-            <div className="px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-ink/10 text-dust cursor-not-allowed">
-              Event Full
-            </div>
-          ) : (
-            <a
-              href="mailto:team@daydreamers-academy.com?subject=RSVP: Event Registration"
-              className="inline-block px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
-            >
-              Register
-            </a>
-          )}
+          <RegistrationButton
+            eventId={event.id}
+            spotsRemaining={event.spotsRemaining}
+            capacity={event.capacity}
+          />
         </div>
       </div>
     </div>

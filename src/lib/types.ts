@@ -23,3 +23,11 @@ export interface Instructor {
   photo: string | null;
   linkedin: string | null;
 }
+
+export interface EventRegistration {
+  id: string;
+  event_id: string;
+  name: string;
+  email: string;
+  created_at: string;
+}
