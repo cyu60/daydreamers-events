@@ -40,8 +40,9 @@ export async function POST(request: Request) {
     // Step 1: Find or create user
     const result = await findOrCreateUser(supabase, trimmedEmail, trimmedName);
     if (!result.userId) {
+      console.error("findOrCreateUser failed:", result.error);
       return NextResponse.json(
-        { error: "Failed to create registration", detail: result.error },
+        { error: "Failed to create registration" },
         { status: 500 }
       );
     }
