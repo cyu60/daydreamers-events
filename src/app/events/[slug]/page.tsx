@@ -7,7 +7,6 @@ import {
 } from "@/lib/notion";
 import { InstructorCard } from "@/components/instructor-card";
 import { EventCard } from "@/components/event-card";
-import { RegistrationForm, RegistrationButton } from "@/components/registration-form";
 
 export const revalidate = 30;
 
@@ -220,11 +219,20 @@ export default async function EventPage({
               )}
             </div>
 
-            <RegistrationForm
-              eventId={event.id}
-              spotsRemaining={event.spotsRemaining}
-              capacity={event.capacity}
-            />
+            {isFull ? (
+              <div className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-ink/10 text-dust cursor-not-allowed">
+                Event Full
+              </div>
+            ) : (
+              <a
+                href={`https://mentormates.ai/events/${event.id}/overview`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
+              >
+                Register on MentorMates
+              </a>
+            )}
           </div>
         </aside>
       </div>
@@ -261,11 +269,20 @@ export default async function EventPage({
           <p className="text-xs text-dust truncate">open to all</p>
         </div>
         <div className="flex-shrink-0">
-          <RegistrationButton
-            eventId={event.id}
-            spotsRemaining={event.spotsRemaining}
-            capacity={event.capacity}
-          />
+          {isFull ? (
+            <div className="px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-ink/10 text-dust cursor-not-allowed">
+              Event Full
+            </div>
+          ) : (
+            <a
+              href={`https://mentormates.ai/events/${event.id}/overview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
+            >
+              Register on MentorMates
+            </a>
+          )}
         </div>
       </div>
     </div>
