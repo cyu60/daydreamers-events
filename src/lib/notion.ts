@@ -54,7 +54,11 @@ export async function getEventBySlug(
       .maybeSingle());
   }
 
-  if (!event) return null;
+  // Fall back to mock data if Supabase has no events
+  if (!event) {
+    const mocks = getMockEvents();
+    return mocks.find((e) => e.slug === slug) ?? null;
+  }
 
   return mapToEvent(event);
 }
