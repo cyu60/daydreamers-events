@@ -17,7 +17,7 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .in("event_type", ["build-night", "hackathon", "dinner"])
+    .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
     .order("event_date", { ascending: true });
 
   if (error || !events || events.length === 0) {
@@ -42,7 +42,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .in("event_type", ["build-night", "hackathon", "dinner"])
+    .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
     .maybeSingle();
 
   if (!event) {
@@ -50,7 +50,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .in("event_type", ["build-night", "hackathon", "dinner"])
+      .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
       .maybeSingle());
   }
 
@@ -60,9 +60,9 @@ export async function getEventBySlug(
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
-  "build-night": "Build Nights",
-  hackathon: "Hackathons",
-  dinner: "Dinners",
+  "dd-build-night": "Build Nights",
+  "dd-hackathon": "Hackathons",
+  "dd-dinner": "Dinners",
 };
 
 function mapToEvent(event: any, registrationCount?: number): Event {
