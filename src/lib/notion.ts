@@ -17,7 +17,7 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .ilike("event_type", "daydreamers-event")
+    .in("event_type", ["build-night", "hackathon", "dinner"])
     .order("event_date", { ascending: true });
 
   if (error || !events || events.length === 0) {
@@ -42,7 +42,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .ilike("event_type", "daydreamers-event")
+    .in("event_type", ["build-night", "hackathon", "dinner"])
     .maybeSingle();
 
   if (!event) {
@@ -50,7 +50,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .ilike("event_type", "daydreamers-event")
+      .in("event_type", ["build-night", "hackathon", "dinner"])
       .maybeSingle());
   }
 
@@ -59,13 +59,11 @@ export async function getEventBySlug(
   return mapToEvent(event);
 }
 
-function categorizeEvent(name: string): string[] {
-  const lower = name.toLowerCase();
-  if (lower.includes("build night")) return ["Build Nights"];
-  if (lower.includes("hackathon") || lower.includes("ara series") || lower.includes("ara x")) return ["Hackathons"];
-  if (lower.includes("magic room") || lower.includes("dinner") || lower.includes("happy hour")) return ["Dinners"];
-  return [];
-}
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  "build-night": "Build Nights",
+  hackathon: "Hackathons",
+  dinner: "Dinners",
+};
 
 function mapToEvent(event: any, registrationCount?: number): Event {
   const totalCapacity = event.participant_capacity ?? 0;
@@ -85,7 +83,9 @@ function mapToEvent(event: any, registrationCount?: number): Event {
     spotsRemaining:
       totalCapacity > 0 ? Math.max(0, totalCapacity - currentAttendees) : 999,
     coverImage: event.cover_image_url,
-    tags: categorizeEvent(event.event_name || ""),
+    tags: event.event_type && EVENT_TYPE_LABELS[event.event_type]
+      ? [EVENT_TYPE_LABELS[event.event_type]]
+      : [],
     status:
       totalCapacity > 0 && currentAttendees >= totalCapacity
         ? ("Full" as const)
