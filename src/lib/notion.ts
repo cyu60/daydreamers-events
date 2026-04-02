@@ -59,6 +59,14 @@ export async function getEventBySlug(
   return mapToEvent(event);
 }
 
+function categorizeEvent(name: string): string[] {
+  const lower = name.toLowerCase();
+  if (lower.includes("build night")) return ["Build Nights"];
+  if (lower.includes("hackathon") || lower.includes("ara series") || lower.includes("ara x")) return ["Hackathons"];
+  if (lower.includes("magic room") || lower.includes("dinner") || lower.includes("happy hour")) return ["Dinners"];
+  return [];
+}
+
 function mapToEvent(event: any, registrationCount?: number): Event {
   const totalCapacity = event.participant_capacity ?? 0;
   // Prefer live registration count when available, fall back to stored value
@@ -77,9 +85,7 @@ function mapToEvent(event: any, registrationCount?: number): Event {
     spotsRemaining:
       totalCapacity > 0 ? Math.max(0, totalCapacity - currentAttendees) : 999,
     coverImage: event.cover_image_url,
-    tags: event.event_type
-      ? [event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1).toLowerCase()]
-      : [],
+    tags: categorizeEvent(event.event_name || ""),
     status:
       totalCapacity > 0 && currentAttendees >= totalCapacity
         ? ("Full" as const)
