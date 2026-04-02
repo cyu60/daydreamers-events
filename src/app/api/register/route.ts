@@ -38,13 +38,14 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
 
     // Step 1: Find or create user
-    const userId = await findOrCreateUser(supabase, trimmedEmail, trimmedName);
-    if (!userId) {
+    const result = await findOrCreateUser(supabase, trimmedEmail, trimmedName);
+    if (!result.userId) {
       return NextResponse.json(
-        { error: "Failed to create registration" },
+        { error: "Failed to create registration", detail: result.error },
         { status: 500 }
       );
     }
+    const userId = result.userId;
 
     // Step 2: Check if already registered
     const { data: existingRole } = await supabase
@@ -136,16 +137,20 @@ async function findOrCreateUser(
   supabase: any,
   email: string,
   displayName: string
-): Promise<string | null> {
+): Promise<{ userId: string | null; error?: string }> {
   // Check user_profiles first
-  const { data: existingProfiles } = await supabase
+  const { data: existingProfiles, error: profileError } = await supabase
     .from("user_profiles")
     .select("uid")
     .eq("email", email)
     .limit(1);
 
+  if (profileError) {
+    return { userId: null, error: `Profile lookup failed: ${profileError.message}` };
+  }
+
   if (existingProfiles && existingProfiles.length > 0) {
-    return existingProfiles[0].uid;
+    return { userId: existingProfiles[0].uid };
   }
 
   // Try to create a new auth user
@@ -162,7 +167,7 @@ async function findOrCreateUser(
       email,
       display_name: displayName,
     });
-    return newUser.user.id;
+    return { userId: newUser.user.id };
   }
 
   // User might exist in auth but not profiles (e.g. deleted profile)
@@ -177,12 +182,12 @@ async function findOrCreateUser(
         email,
         display_name: displayName,
       });
-      return existing.id;
+      return { userId: existing.id };
     }
   }
 
   console.error("Failed to find or create user:", createError);
-  return null;
+  return { userId: null, error: `Auth create failed: ${createError?.message || "unknown"}` };
 }
 
 function getConfirmationEmailHtml({
