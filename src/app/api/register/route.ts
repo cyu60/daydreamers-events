@@ -13,142 +13,176 @@ function getSupabaseAdmin() {
 }
 
 export async function POST(request: Request) {
-  const { name, email, eventId, eventTitle, eventSlug } = await request.json();
+  try {
+    const { name, email, eventId, eventTitle, eventSlug } =
+      await request.json();
 
-  if (!name || !email || !eventId) {
-    return NextResponse.json(
-      { error: "Name, email, and eventId are required" },
-      { status: 400 }
-    );
-  }
+    if (!name || !email || !eventId) {
+      return NextResponse.json(
+        { error: "Name, email, and eventId are required" },
+        { status: 400 }
+      );
+    }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
-    return NextResponse.json(
-      { error: "Invalid email format" },
-      { status: 400 }
-    );
-  }
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
 
-  const supabase = getSupabaseAdmin();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
 
-  // Find or create user by email
-  let userId: string;
+    const supabase = getSupabaseAdmin();
 
-  const { data: existingUsers } = await supabase
-    .from("user_profiles")
-    .select("uid")
-    .eq("email", email.trim().toLowerCase())
-    .limit(1);
-
-  if (existingUsers && existingUsers.length > 0) {
-    userId = existingUsers[0].uid;
-  } else {
-    // Create a new Supabase Auth user (no email confirmation needed)
-    const { data: newUser, error: createError } =
-      await supabase.auth.admin.createUser({
-        email: email.trim().toLowerCase(),
-        email_confirm: true,
-        user_metadata: { display_name: name.trim() },
-      });
-
-    if (createError || !newUser?.user) {
-      console.error("Failed to create user:", createError);
+    // Step 1: Find or create user
+    const userId = await findOrCreateUser(supabase, trimmedEmail, trimmedName);
+    if (!userId) {
       return NextResponse.json(
         { error: "Failed to create registration" },
         { status: 500 }
       );
     }
 
-    userId = newUser.user.id;
+    // Step 2: Check if already registered
+    const { data: existingRole } = await supabase
+      .from("user_event_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("event_id", eventId)
+      .maybeSingle();
 
-    // Create user_profiles entry
-    await supabase.from("user_profiles").upsert({
-      uid: userId,
-      email: email.trim().toLowerCase(),
-      display_name: name.trim(),
-    });
-  }
+    if (existingRole) {
+      return NextResponse.json(
+        { error: "You're already registered for this event!" },
+        { status: 409 }
+      );
+    }
 
-  // Check if already registered
-  const { data: existingRole } = await supabase
-    .from("user_event_roles")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("event_id", eventId)
-    .maybeSingle();
+    // Step 3: Check capacity (only for real events in DB)
+    const { data: eventData } = await supabase
+      .from("events")
+      .select("participant_capacity")
+      .eq("event_id", eventId)
+      .maybeSingle();
 
-  if (existingRole) {
+    if (eventData?.participant_capacity) {
+      const { count } = await supabase
+        .from("user_event_roles")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("role", "participant");
+
+      if (count !== null && count >= eventData.participant_capacity) {
+        return NextResponse.json(
+          { error: "This event is full" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Step 4: Register as participant
+    const { error: roleError } = await supabase
+      .from("user_event_roles")
+      .insert({
+        user_id: userId,
+        event_id: eventId,
+        role: "participant",
+      });
+
+    if (roleError) {
+      console.error("Failed to create role:", roleError);
+      return NextResponse.json(
+        { error: "Failed to register. This event may not be available yet." },
+        { status: 500 }
+      );
+    }
+
+    // Step 5: Send confirmation email (non-blocking)
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const mmEventUrl = `https://mentormates.ai/events/${eventSlug || eventId}/overview`;
+
+      try {
+        await resend.emails.send({
+          from: NOTIFICATIONS_EMAIL_FROM,
+          to: trimmedEmail,
+          subject: `You're in! ${eventTitle || "DayDreamers Event"}`,
+          html: getConfirmationEmailHtml({
+            name: trimmedName,
+            eventTitle: eventTitle || "DayDreamers Event",
+            mmEventUrl,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Registration error:", err);
     return NextResponse.json(
-      { error: "You're already registered for this event!" },
-      { status: 409 }
-    );
-  }
-
-  // Check capacity
-  const { count } = await supabase
-    .from("user_event_roles")
-    .select("id", { count: "exact", head: true })
-    .eq("event_id", eventId)
-    .eq("role", "participant");
-
-  const { data: eventData } = await supabase
-    .from("events")
-    .select("participant_capacity")
-    .eq("event_id", eventId)
-    .single();
-
-  if (
-    eventData?.participant_capacity &&
-    count !== null &&
-    count >= eventData.participant_capacity
-  ) {
-    return NextResponse.json(
-      { error: "This event is full" },
-      { status: 409 }
-    );
-  }
-
-  // Register as participant
-  const { error: roleError } = await supabase
-    .from("user_event_roles")
-    .insert({
-      user_id: userId,
-      event_id: eventId,
-      role: "participant",
-    });
-
-  if (roleError) {
-    console.error("Failed to create role:", roleError);
-    return NextResponse.json(
-      { error: "Failed to register" },
+      { error: "Something went wrong" },
       { status: 500 }
     );
   }
+}
 
-  // Send confirmation email
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const mmEventUrl = `https://mentormates.ai/events/${eventSlug || eventId}/overview`;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findOrCreateUser(
+  supabase: any,
+  email: string,
+  displayName: string
+): Promise<string | null> {
+  // Check user_profiles first
+  const { data: existingProfiles } = await supabase
+    .from("user_profiles")
+    .select("uid")
+    .eq("email", email)
+    .limit(1);
 
-    try {
-      await resend.emails.send({
-        from: NOTIFICATIONS_EMAIL_FROM,
-        to: email.trim(),
-        subject: `You're in! ${eventTitle || "DayDreamers Event"}`,
-        html: getConfirmationEmailHtml({
-          name: name.trim(),
-          eventTitle: eventTitle || "DayDreamers Event",
-          mmEventUrl,
-        }),
+  if (existingProfiles && existingProfiles.length > 0) {
+    return existingProfiles[0].uid;
+  }
+
+  // Try to create a new auth user
+  const { data: newUser, error: createError } =
+    await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { display_name: displayName },
+    });
+
+  if (newUser?.user) {
+    await supabase.from("user_profiles").upsert({
+      uid: newUser.user.id,
+      email,
+      display_name: displayName,
+    });
+    return newUser.user.id;
+  }
+
+  // User might exist in auth but not profiles (e.g. deleted profile)
+  if (createError?.message?.includes("already been registered")) {
+    const {
+      data: { users },
+    } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const existing = users?.find((u: { email?: string }) => u.email === email);
+    if (existing) {
+      await supabase.from("user_profiles").upsert({
+        uid: existing.id,
+        email,
+        display_name: displayName,
       });
-    } catch (emailError) {
-      console.error("Failed to send confirmation email:", emailError);
-      // Don't fail the registration if email fails
+      return existing.id;
     }
   }
 
-  return NextResponse.json({ success: true });
+  console.error("Failed to find or create user:", createError);
+  return null;
 }
 
 function getConfirmationEmailHtml({
