@@ -7,6 +7,7 @@ import {
 } from "@/lib/notion";
 import { InstructorCard } from "@/components/instructor-card";
 import { EventCard } from "@/components/event-card";
+import { RegisterButton } from "@/components/register-button";
 
 export const revalidate = 60;
 
@@ -219,18 +220,13 @@ export default async function EventPage({
               )}
             </div>
 
-            {isFull ? (
-              <div className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-ink/10 text-dust cursor-not-allowed">
-                Event Full
-              </div>
-            ) : (
-              <a
-                href="mailto:team@daydreamers-academy.com?subject=RSVP: Event Registration"
-                className="block w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
-              >
-                Register
-              </a>
-            )}
+            <RegisterButton
+              eventId={event.id}
+              eventTitle={event.title}
+              eventSlug={event.slug}
+              isFull={isFull}
+              className="w-full"
+            />
           </div>
         </aside>
       </div>
@@ -267,18 +263,13 @@ export default async function EventPage({
           <p className="text-xs text-dust truncate">open to all</p>
         </div>
         <div className="flex-shrink-0">
-          {isFull ? (
-            <div className="px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-ink/10 text-dust cursor-not-allowed">
-              Event Full
-            </div>
-          ) : (
-            <a
-              href="mailto:team@daydreamers-academy.com?subject=RSVP: Event Registration"
-              className="inline-block px-6 py-3 rounded-full text-sm font-semibold tracking-wide bg-cobalt text-white hover:bg-cobalt-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
-            >
-              Register
-            </a>
-          )}
+          <RegisterButton
+            eventId={event.id}
+            eventTitle={event.title}
+            eventSlug={event.slug}
+            isFull={isFull}
+            className="px-6"
+          />
         </div>
       </div>
     </div>
