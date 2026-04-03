@@ -17,11 +17,15 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .contains("event_type", [["daydreamers-event"]])
+    .like("event_type", "%daydreamers-event%")
     .order("event_date", { ascending: true });
 
-  if (error || !events || events.length === 0) {
-    console.error("Failed to fetch daydreamers events:", error);
+  if (error) {
+    console.error("Supabase query error:", error.message, error.code);
+    return getMockEvents();
+  }
+  if (!events || events.length === 0) {
+    console.error("No daydreamers events found in Supabase, falling back to mock data");
     return getMockEvents();
   }
 
@@ -42,7 +46,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .contains("event_type", [["daydreamers-event"]])
+    .like("event_type", "%daydreamers-event%")
     .maybeSingle();
 
   if (!event) {
@@ -50,7 +54,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .contains("event_type", [["daydreamers-event"]])
+      .like("event_type", "%daydreamers-event%")
       .maybeSingle());
   }
 
