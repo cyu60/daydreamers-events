@@ -24,13 +24,23 @@ export async function getEvents(): Promise<Event[]> {
     return getMockEvents();
   }
 
-  // Filter for daydreamers events in JS (event_type column type is inconsistent)
+  console.log(`Supabase returned ${events?.length ?? 0} total events`);
+
+  // Filter for daydreamers events (types prefixed with "dd-" or "daydreamers")
   const ddEvents = (events || []).filter((e) => {
-    const et = JSON.stringify(e.event_type || "");
-    return et.includes("daydreamers-event");
+    const et = JSON.stringify(e.event_type || "").toLowerCase();
+    return et.includes("dd-") || et.includes("daydreamers");
   });
 
+  console.log(`Found ${ddEvents.length} daydreamers events after filtering`);
+
   if (ddEvents.length === 0) {
+    // Log unique event_type values to debug
+    const types = [...new Set((events || []).map((e: any) => JSON.stringify(e.event_type)))];
+    console.log("All unique event_types:", types.slice(0, 10));
+    // Check for vmw5keys slug specifically
+    const vmw = (events || []).find((e: any) => e.slug === "vmw5keys");
+    console.log("vmw5keys event:", vmw ? JSON.stringify({ et: vmw.event_type, slug: vmw.slug }) : "NOT FOUND");
     console.error("No daydreamers events found in Supabase, falling back to mock data");
     return getMockEvents();
   }
