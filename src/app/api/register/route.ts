@@ -102,7 +102,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // Step 5: Send confirmation email (non-blocking)
+    // Step 5: Add guest to Luma (non-blocking)
+    if (process.env.LUMA_API_KEY) {
+      try {
+        const { data: event } = await supabase
+          .from("events")
+          .select("luma_event_id")
+          .eq("event_id", eventId)
+          .maybeSingle();
+
+        if (event?.luma_event_id) {
+          const lumaRes = await fetch(
+            "https://api.lu.ma/public/v1/event/add-guests",
+            {
+              method: "POST",
+              headers: {
+                "x-luma-api-key": process.env.LUMA_API_KEY,
+                "content-type": "application/json",
+              },
+              body: JSON.stringify({
+                event_api_id: event.luma_event_id,
+                guests: [{ email: trimmedEmail, name: trimmedName }],
+              }),
+            }
+          );
+          if (!lumaRes.ok) {
+            console.error("Luma add-guest failed:", await lumaRes.text());
+          }
+        }
+      } catch (lumaError) {
+        console.error("Failed to add guest to Luma:", lumaError);
+      }
+    }
+
+    // Step 6: Send confirmation email (non-blocking)
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const mmEventUrl = `https://mentormates.ai/events/${eventSlug || eventId}/overview`;

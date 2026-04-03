@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         location: location,
         event_type: `{{daydreamers-event}}`,
         visibility: "public",
+        luma_event_id: entry.api_id,
       };
 
       let error;

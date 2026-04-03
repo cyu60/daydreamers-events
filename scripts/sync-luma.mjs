@@ -65,6 +65,7 @@ async function upsertEvent(eventData, isUpdate) {
           location: eventData.location,
           event_type: eventData.event_type,
           visibility: eventData.visibility,
+          luma_event_id: eventData.luma_event_id,
         }),
       }
     );
@@ -137,6 +138,7 @@ async function main() {
       event_type: `{{${eventType}}}`,
       visibility: "public",
       rules: "[]",
+      luma_event_id: entry.api_id,
     };
 
     const isUpdate = slugToUuid.has(slug);
