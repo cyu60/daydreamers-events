@@ -17,19 +17,25 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .filter("event_type", "cs", "{{daydreamers-event}}")
     .order("event_date", { ascending: true });
 
   if (error) {
     console.error("Supabase query error:", error.message, error.code);
     return getMockEvents();
   }
-  if (!events || events.length === 0) {
+
+  // Filter for daydreamers events in JS (event_type column type is inconsistent)
+  const ddEvents = (events || []).filter((e) => {
+    const et = JSON.stringify(e.event_type || "");
+    return et.includes("daydreamers-event");
+  });
+
+  if (ddEvents.length === 0) {
     console.error("No daydreamers events found in Supabase, falling back to mock data");
     return getMockEvents();
   }
 
-  return events.map((event) => mapToEvent(event));
+  return ddEvents.map((event) => mapToEvent(event));
 }
 
 export async function getEventBySlug(
@@ -46,7 +52,6 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .filter("event_type", "cs", "{{daydreamers-event}}")
     .maybeSingle();
 
   if (!event) {
@@ -54,7 +59,6 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .filter("event_type", "cs", "{{daydreamers-event}}")
       .maybeSingle());
   }
 
