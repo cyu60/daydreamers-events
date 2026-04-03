@@ -26,6 +26,15 @@ export const metadata: Metadata = {
   description:
     "Hands-on events in AI, no-code, design, and engineering. Learn by doing with expert instructors.",
   metadataBase: new URL("https://events.daydreamers-academy.com"),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DayDreamers",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   openGraph: {
     title: "DayDreamers Events — Learn by Doing",
     description:
@@ -61,7 +70,16 @@ export default function RootLayout({
       lang="en"
       className={`${dmSerif.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
+      <head>
+        <meta name="theme-color" content="#2652e6" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body className="min-h-screen flex flex-col">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

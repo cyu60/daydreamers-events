@@ -17,7 +17,7 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .ilike("event_type", "daydreamers-event")
+    .contains("event_type", [["daydreamers-event"]])
     .order("event_date", { ascending: true });
 
   if (error || !events || events.length === 0) {
@@ -42,7 +42,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .ilike("event_type", "daydreamers-event")
+    .contains("event_type", [["daydreamers-event"]])
     .maybeSingle();
 
   if (!event) {
@@ -50,7 +50,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .ilike("event_type", "daydreamers-event")
+      .contains("event_type", [["daydreamers-event"]])
       .maybeSingle());
   }
 
@@ -61,6 +61,14 @@ export async function getEventBySlug(
   }
 
   return mapToEvent(event);
+}
+
+function deriveEventTags(name: string): string[] {
+  const lower = (name || "").toLowerCase();
+  if (lower.includes("build night") || lower.includes("vibe coding")) return ["Build Nights"];
+  if (lower.includes("magic room") || lower.includes("dinner") || lower.includes("happy hour")) return ["Dinners"];
+  if (lower.includes("hackathon") || lower.includes("ara")) return ["Hackathons"];
+  return ["Event"];
 }
 
 function mapToEvent(event: any): Event {
@@ -80,9 +88,7 @@ function mapToEvent(event: any): Event {
     spotsRemaining:
       totalCapacity > 0 ? Math.max(0, totalCapacity - currentAttendees) : 999,
     coverImage: event.cover_image_url,
-    tags: event.event_type
-      ? [event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1).toLowerCase()]
-      : [],
+    tags: deriveEventTags(event.event_name),
     status:
       totalCapacity > 0 && currentAttendees >= totalCapacity
         ? ("Full" as const)
