@@ -17,7 +17,7 @@ export async function getEvents(): Promise<Event[]> {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .like("event_type", "%daydreamers-event%")
+    .filter("event_type", "cs", "{{daydreamers-event}}")
     .order("event_date", { ascending: true });
 
   if (error) {
@@ -46,7 +46,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .like("event_type", "%daydreamers-event%")
+    .filter("event_type", "cs", "{{daydreamers-event}}")
     .maybeSingle();
 
   if (!event) {
@@ -54,7 +54,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .like("event_type", "%daydreamers-event%")
+      .filter("event_type", "cs", "{{daydreamers-event}}")
       .maybeSingle());
   }
 
