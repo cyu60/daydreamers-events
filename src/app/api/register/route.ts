@@ -113,7 +113,7 @@ export async function POST(request: Request) {
 
         if (event?.luma_event_id) {
           const lumaRes = await fetch(
-            "https://api.lu.ma/public/v1/event/add-guests",
+            "https://public-api.luma.com/v1/event/add-guests",
             {
               method: "POST",
               headers: {
@@ -187,41 +187,44 @@ async function findOrCreateUser(
     return { userId: existingProfiles[0].uid };
   }
 
-  // Try to create a new auth user
-  const { data: newUser, error: createError } =
-    await supabase.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: { display_name: displayName },
-    });
+  // Check if an auth user already exists for this email
+  const {
+    data: { users },
+    error: listError,
+  } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
-  if (newUser?.user) {
-    await supabase.from("user_profiles").upsert({
-      uid: newUser.user.id,
-      email,
-      display_name: displayName,
-    });
-    return { userId: newUser.user.id };
+  if (listError) {
+    return { userId: null, error: `Auth lookup failed: ${listError.message}` };
   }
 
-  // User might exist in auth but not profiles (e.g. deleted profile)
-  if (createError?.message?.includes("already been registered")) {
-    const {
-      data: { users },
-    } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const existing = users?.find((u: { email?: string }) => u.email === email);
-    if (existing) {
-      await supabase.from("user_profiles").upsert({
-        uid: existing.id,
-        email,
-        display_name: displayName,
-      });
-      return { userId: existing.id };
+  const existingAuthUser = users?.find(
+    (u: { email?: string }) => u.email === email
+  );
+
+  if (existingAuthUser) {
+    // Auth user exists — create a profile linked to them
+    const { error: upsertError } = await supabase
+      .from("user_profiles")
+      .upsert({ uid: existingAuthUser.id, email, display_name: displayName });
+    if (upsertError) {
+      return { userId: null, error: `Profile upsert failed: ${upsertError.message}` };
     }
+    return { userId: existingAuthUser.id };
   }
 
-  console.error("Failed to find or create user:", createError);
-  return { userId: null, error: `Auth create failed: ${createError?.message || "unknown"}` };
+  // No auth user — insert a profile with a generated uid
+  const { data: newProfile, error: insertError } = await supabase
+    .from("user_profiles")
+    .insert({ uid: crypto.randomUUID(), email, display_name: displayName })
+    .select("uid")
+    .single();
+
+  if (insertError) {
+    console.error("Failed to insert user profile:", insertError);
+    return { userId: null, error: `Profile insert failed: ${insertError.message}` };
+  }
+
+  return { userId: newProfile.uid };
 }
 
 function getConfirmationEmailHtml({

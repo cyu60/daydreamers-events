@@ -22,7 +22,7 @@ async function fetchLumaEvents() {
   let cursor = null;
 
   do {
-    const url = new URL("https://api.lu.ma/public/v1/calendar/list-events");
+    const url = new URL("https://public-api.luma.com/v1/event/add-guests");
     if (cursor) url.searchParams.set("pagination_cursor", cursor);
 
     const res = await fetch(url.toString(), {

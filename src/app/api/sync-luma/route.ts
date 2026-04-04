@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
-const LUMA_API_URL = "https://api.lu.ma/public/v1/calendar/list-events";
+const LUMA_API_URL = "https://public-api.luma.com/v1/calendar/list-events";
 
 function getSupabaseAdmin() {
   return createClient(
