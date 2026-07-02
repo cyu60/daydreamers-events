@@ -76,7 +76,8 @@ function mapToEvent(event: any, registrationCount?: number): Event {
     title: event.event_name,
     description: event.event_blurb || event.event_description || "",
     fullDescription: event.event_description || event.event_blurb || "",
-    instructorIds: event.owner_id ? [event.owner_id] : [],
+    // All DayDreamers events are led by Chinat (instructor id "1")
+    instructorIds: ["1"],
     date: event.event_date,
     duration: "",
     capacity: totalCapacity,
@@ -149,7 +150,7 @@ function getMockEvents(): Event[] {
         "Automate your workflows with AI — no coding required. Build real automations with Make, Zapier, and GPT.",
       fullDescription:
         "Stop doing repetitive tasks manually. In this session, you'll learn how to connect AI models to your existing tools and create powerful automations without writing a single line of code.\n\nWe'll build 3 real automations together: an AI email responder, a content pipeline, and a lead qualification system. You'll leave with templates you can customize for your own business.",
-      instructorIds: ["2"],
+      instructorIds: ["1"],
       date: "2026-04-19T14:00:00",
       duration: "3 hours",
       capacity: 25,
@@ -166,7 +167,7 @@ function getMockEvents(): Event[] {
         "Use AI tools to supercharge your design process — from ideation to polished assets in record time.",
       fullDescription:
         "AI is transforming how designers work. In this session, you'll learn to use Midjourney, DALL-E, Figma AI, and other tools to accelerate every stage of the design process.\n\nWe'll cover: AI-assisted moodboarding, rapid prototyping with generated assets, and how to maintain brand consistency when using AI. Bring a project you're working on — you'll apply everything in real time.",
-      instructorIds: ["1", "2"],
+      instructorIds: ["1"],
       date: "2026-04-26T10:00:00",
       duration: "2.5 hours",
       capacity: 20,
@@ -183,7 +184,7 @@ function getMockEvents(): Event[] {
         "From idea to deployed product in one intensive session. Learn the modern stack for shipping fast.",
       fullDescription:
         "The best way to learn is to build. In this intensive session, you'll go from a blank repo to a live, deployed SaaS product with authentication, payments, and a database.\n\nStack: Next.js, Supabase, Stripe, Vercel. We'll move fast, pair program, and help each other debug. By the end of the day, you'll have a real product live on the internet.",
-      instructorIds: ["3"],
+      instructorIds: ["1"],
       date: "2026-05-03T09:00:00",
       duration: "6 hours",
       capacity: 15,
@@ -199,30 +200,12 @@ function getMockInstructors(): Instructor[] {
   return [
     {
       id: "1",
-      slug: "alex-chen",
-      name: "Alex Chen",
-      role: "AI Events Lead",
-      bio: "Alex is a machine learning engineer turned educator. Previously at Google Brain, now focused on making AI accessible to everyone. Has taught 500+ students across 20 events.",
-      photo: null,
-      linkedin: "https://linkedin.com/in/example",
-    },
-    {
-      id: "2",
-      slug: "maya-patel",
-      name: "Maya Patel",
-      role: "Automation & No-Code Specialist",
-      bio: "Maya helps businesses automate everything. Former ops lead at a YC startup, she's built automations that saved her team 40+ hours per week. Believes everyone should be able to harness AI, regardless of technical background.",
-      photo: null,
-      linkedin: "https://linkedin.com/in/example",
-    },
-    {
-      id: "3",
-      slug: "jordan-kim",
-      name: "Jordan Kim",
-      role: "Full-Stack Engineer & Mentor",
-      bio: "Jordan has shipped 12 products in 3 years. He believes in learning by doing and has mentored dozens of first-time founders through their first launches. Currently building developer tools at a stealth startup.",
-      photo: null,
-      linkedin: "https://linkedin.com/in/example",
+      slug: "chinat-yu",
+      name: "Chinat Yu",
+      role: "Founder & Lead Instructor",
+      bio: "Chinat leads DayDreamers and teaches every session. A Stanford MS in Computer Science and Johns Hopkins alum, he co-founded MentorMates and has run hundreds of hands-on AI events and workshops across universities and builder communities. He teaches the way he builds: small groups, live sessions, and a real shipped project by the end.",
+      photo: "/instructors/chinat.png",
+      linkedin: "https://linkedin.com/in/chinatyu",
     },
   ];
 }
