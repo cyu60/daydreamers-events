@@ -14,10 +14,12 @@ export async function getEvents(): Promise<Event[]> {
   const supabase = getSupabase();
   if (!supabase) return getMockEvents();
 
+  // event_type is a text[] column; real rows are tagged ["daydreamers-event"]
+  // (legacy dd-* values kept for compatibility). overlaps = PostgREST `ov`.
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
-    .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
+    .overlaps("event_type", DD_EVENT_TYPES)
     .order("event_date", { ascending: true });
 
   if (error || !events || events.length === 0) {
@@ -42,7 +44,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
+    .overlaps("event_type", DD_EVENT_TYPES)
     .maybeSingle();
 
   if (!event) {
@@ -50,7 +52,7 @@ export async function getEventBySlug(
       .from("events")
       .select("*")
       .eq("event_id", slug)
-      .in("event_type", ["dd-build-night", "dd-hackathon", "dd-dinner"])
+      .overlaps("event_type", DD_EVENT_TYPES)
       .maybeSingle());
   }
 
@@ -59,11 +61,27 @@ export async function getEventBySlug(
   return mapToEvent(event);
 }
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  "dd-build-night": "Build Nights",
-  "dd-hackathon": "Hackathons",
-  "dd-dinner": "Dinners",
-};
+const DD_EVENT_TYPES = [
+  "daydreamers-event",
+  "dd-build-night",
+  "dd-hackathon",
+  "dd-dinner",
+];
+
+function deriveEventTags(name: string): string[] {
+  const lower = (name || "").toLowerCase();
+  if (lower.includes("build night") || lower.includes("vibe coding"))
+    return ["Build Nights"];
+  if (
+    lower.includes("magic room") ||
+    lower.includes("dinner") ||
+    lower.includes("happy hour")
+  )
+    return ["Dinners"];
+  if (lower.includes("hackathon") || lower.includes("ara "))
+    return ["Hackathons"];
+  return ["Event"];
+}
 
 function mapToEvent(event: any, registrationCount?: number): Event {
   const totalCapacity = event.participant_capacity ?? 0;
@@ -84,9 +102,7 @@ function mapToEvent(event: any, registrationCount?: number): Event {
     spotsRemaining:
       totalCapacity > 0 ? Math.max(0, totalCapacity - currentAttendees) : 999,
     coverImage: event.cover_image_url,
-    tags: event.event_type && EVENT_TYPE_LABELS[event.event_type]
-      ? [EVENT_TYPE_LABELS[event.event_type]]
-      : [],
+    tags: deriveEventTags(event.event_name),
     status:
       totalCapacity > 0 && currentAttendees >= totalCapacity
         ? ("Full" as const)
